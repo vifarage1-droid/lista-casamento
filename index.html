@@ -39,13 +39,13 @@ const WA = '5561982426059';
 
 const items = [
  {n:'Geladeira',v:3000,d:'Geladeira frost free duplex para nossa cozinha.',i:'https://images.unsplash.com/photo-1731323479152-4c4cec6a65f6?q=80&w=698&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
- {n:'Filtro de Água',v:1200,d:'Filtro de água moderno e eficiente.',i:'https://images.unsplash.com/photo-1618220179428-22790b461013'},
- {n:'Televisão',v:2400,d:'Televisão 4K para filmes e séries.',i:'https://images.unsplash.com/photo-1593784991095-a205069470b6'},
- {n:'Cama',v:4200,d:'Cama de casal confortável.',i:'https://images.unsplash.com/photo-1505691938895-1758d7feb511'},
- {n:'Micro-ondas',v:600,d:'Micro-ondas prático para o dia a dia.',i:'https://images.unsplash.com/photo-1586201375761-83865001e17b'},
- {n:'Máquina de Lavar',v:1800,d:'Máquina de lavar roupas automática.',i:'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c'},
- {n:'Lava-louças',v:2100,d:'Lava-louças para facilitar a rotina.',i:'https://images.unsplash.com/photo-1615874959474-d609969a20ed'},
- {n:'Air Fryer',v:300,d:'Air fryer para refeições saudáveis.',i:'https://images.unsplash.com/photo-1604908177522-4296f19e2b4b'}
+ {n:'Filtro de Água',v:1200,d:'Filtro de água moderno e eficiente.',i:'https://electrolux.vtexassets.com/arquivos/ids/275966-500-500?v=638853563246270000&width=500&height=500&aspect=true&format=auto'},
+ {n:'Televisão',v:2400,d:'Televisão 4K para filmes e séries.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/tv/50qned70asa-bwz/dz-01.jpg/jcr:content/renditions/thum-1600x1062.jpeg?w=800'},
+ {n:'Cama',v:4200,d:'Cama de casal confortável.',i:'https://images.unsplash.com/photo-1613977257441-dd57bd5aaf70?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
+ {n:'Micro-ondas',v:600,d:'Micro-ondas prático para o dia a dia.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/produtos/ha/mwo/ms3043br/1-1600-ms3043br.jpg/jcr:content/renditions/thum-1600x1062.jpeg?w=800'},
+ {n:'Máquina de Lavar',v:1800,d:'Máquina de lavar roupas automática.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/lavadoras-de-roupas/cv9014wc2_abwfbrs_essp_br_c/gallery/large01.jpg?w=800'},
+ {n:'Lava-louças',v:2100,d:'Lava-louças para facilitar a rotina.',i:'https://brastemp.vtexassets.com/arquivos/ids/267500-1600-auto?v=638973414195430000&width=1600&height=auto&aspect=true'},
+ {n:'Air Fryer',v:300,d:'Air fryer para refeições saudáveis.',i:'https://electrolux.vtexassets.com/arquivos/ids/268536-500-500?v=638778160471700000&width=500&height=500&aspect=true&format=auto'}
 ];
 
 items.forEach(it=>{it.total=Math.ceil(it.v/QUOTA);it.rest=it.total});
