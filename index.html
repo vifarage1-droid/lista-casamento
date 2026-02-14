@@ -37,13 +37,15 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 .admin-panel{display:none;padding:20px}
 .admin-panel.active{display:block}
 .main-content.hidden{display:none}
-.message-card{background:#f5f5f5;padding:15px;margin:10px 0;border-radius:8px;text-align:left}
+.message-card{background:#f5f5f5;padding:15px;margin:10px 0;border-radius:8px;text-align:left;position:relative}
 .message-card h4{margin:0 0 5px 0;color:#1e88e5}
 .message-card p{margin:5px 0}
 .loading{text-align:center;padding:20px;color:#666}
 .status-indicator{position:fixed;top:10px;right:10px;padding:8px 15px;border-radius:20px;font-size:12px;font-weight:bold;z-index:1000}
 .status-online{background:#28a745;color:white}
 .status-offline{background:#dc3545;color:white}
+.delete-btn{position:absolute;top:10px;right:10px;background:#dc3545;color:#fff;border:none;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer}
+.delete-btn:hover{background:#c82333}
 </style>
 </head>
 <body>
@@ -68,7 +70,6 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 
 <div class="modal" id="modal"></div>
 
-<!-- =============== FIREBASE (module) =============== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import {
@@ -95,10 +96,10 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
   try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
-    console.log("✅ Firebase inicializado com sucesso!");
+    console.log("✅ Firebase inicializado!");
     updateStatus(true);
   } catch (error) {
-    console.error("❌ Erro ao inicializar Firebase:", error);
+    console.error("❌ Erro Firebase:", error);
     updateStatus(false);
   }
 
@@ -113,18 +114,13 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     }
   }
 
-  // Implementação do storage com tratamento de erros melhorado
   window.storage = {
     async get(key) {
       try {
         const reference = doc(db, "storage", key);
         const snap = await getDoc(reference);
-        if (!snap.exists()) {
-          console.log(`📭 Chave não encontrada: ${key}`);
-          return null;
-        }
+        if (!snap.exists()) return null;
         const data = snap.data();
-        console.log(`✅ Dados recuperados: ${key}`);
         return { value: typeof data.value === "string" ? data.value : JSON.stringify(data.value) };
       } catch (e) {
         console.error(`❌ Erro ao buscar ${key}:`, e);
@@ -136,13 +132,13 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     async set(key, value) {
       try {
         await setDoc(doc(db, "storage", key), { value: value });
-        console.log(`✅ Dados salvos: ${key}`);
+        console.log(`✅ Salvo: ${key}`);
         updateStatus(true);
         return true;
       } catch (e) {
         console.error(`❌ Erro ao salvar ${key}:`, e);
         updateStatus(false);
-        alert('Erro ao salvar dados. Verifique sua conexão com a internet.');
+        alert('Erro ao salvar. Verifique sua conexão.');
         return false;
       }
     },
@@ -154,10 +150,9 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
         snap.forEach(d => {
           if (d.id.startsWith(prefix)) keys.push(d.id);
         });
-        console.log(`✅ Listados ${keys.length} documentos com prefixo "${prefix}"`);
         return { keys };
       } catch (e) {
-        console.error(`❌ Erro ao listar documentos:`, e);
+        console.error(`❌ Erro ao listar:`, e);
         updateStatus(false);
         return { keys: [] };
       }
@@ -166,7 +161,7 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     async delete(key) {
       try {
         await deleteDoc(doc(db, "storage", key));
-        console.log(`✅ Documento deletado: ${key}`);
+        console.log(`✅ Deletado: ${key}`);
         return true;
       } catch (e) {
         console.error(`❌ Erro ao deletar ${key}:`, e);
@@ -175,20 +170,14 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     }
   };
 
-  console.log("🔥 Firebase storage API pronta!");
-  
-  // Dispara evento personalizado quando Firebase estiver pronto
   window.dispatchEvent(new Event('firebaseReady'));
 </script>
-<!-- =============== FIM FIREBASE =============== -->
 
-<!-- ================= SCRIPT PRINCIPAL ================= -->
 <script>
-/* SCRIPT PRINCIPAL */
 const QUOTA = 300;
 const PIX = 'vifarage1@gmail.com';
 const WA = '5561982426059';
-const ADMIN_PASSWORD = 'noivos2026'; // MUDE ESTA SENHA!
+const ADMIN_PASSWORD = 'noivos2026';
 
 const items = [
  {id:'geladeira',n:'Geladeira',v:3000,d:'Geladeira frost free duplex para nossa cozinha.',i:'https://images.unsplash.com/photo-1731323479152-4c4cec6a65f6?q=80&w=698&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
@@ -207,12 +196,9 @@ function formatBRL(valor) {
 
 items.forEach(it=>{it.total=Math.ceil(it.v/QUOTA);it.rest=it.total});
 
-/* Aguarda Firebase estar pronto */
 function initApp() {
   if (typeof storage === 'undefined') {
-    console.log('⏳ Aguardando Firebase...');
     window.addEventListener('firebaseReady', () => {
-      console.log('🚀 Iniciando aplicação...');
       loadData();
     });
   } else {
@@ -220,9 +206,7 @@ function initApp() {
   }
 }
 
-/* Carrega os estados salvos no Firestore */
 async function loadData(){
- console.log('📥 Carregando dados do Firestore...');
  try {
   for(let item of items){
    const result = await storage.get('item_'+item.id);
@@ -230,25 +214,19 @@ async function loadData(){
     const data = JSON.parse(result.value);
     if(data && typeof data.rest !== 'undefined') {
       item.rest = data.rest;
-      console.log(`  ✓ ${item.n}: ${item.rest}/${item.total} cotas`);
     }
    }
   }
-  console.log('✅ Dados carregados com sucesso!');
  } catch(error) {
-  console.error('❌ Erro ao carregar dados:', error);
+  console.error('Erro ao carregar:', error);
  }
  document.getElementById('loading').style.display = 'none';
  render();
 }
 
-/* salva item */
 async function saveItem(item){
  try {
   const saved = await storage.set('item_'+item.id, JSON.stringify({rest: item.rest}));
-  if (saved) {
-    console.log(`💾 Item salvo: ${item.n} (${item.rest} cotas restantes)`);
-  }
   return saved;
  } catch(error) {
   console.error('saveItem error:', error);
@@ -256,7 +234,6 @@ async function saveItem(item){
  }
 }
 
-/* salva purchase */
 async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
  try {
   const timestamp = Date.now();
@@ -265,9 +242,6 @@ async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
    date: new Date().toLocaleString('pt-BR')
   };
   const saved = await storage.set('purchase_'+timestamp, JSON.stringify(purchaseData));
-  if (saved) {
-    console.log(`🎁 Compra registrada: ${nome} - ${itemName}`);
-  }
   return saved;
  } catch(error) {
   console.error('savePurchase error:', error);
@@ -275,7 +249,6 @@ async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
  }
 }
 
-/* render da grade */
 function render(){
  const grid=document.getElementById('grid');
  grid.innerHTML='';
@@ -296,7 +269,6 @@ function render(){
  });
 }
 
-/* abre modal de pagamento */
 function openPay(idx){
  const it=items[idx];
  if(it.rest === 0) return;
@@ -320,7 +292,10 @@ function openPay(idx){
   </div>
   <p style="margin-top:20px"><b>Faça o pagamento via PIX usando o QR Code abaixo:</b></p>
   <div class="pix">
-   <img src="qrcode.jpeg" alt="QR Code PIX" class="qrcode">
+   <img src="data:image/jpeg;base64,ENDOFFILE
+cat /home/claude/qrcode_oneline.txt >> /mnt/user-data/outputs/index-final.html
+cat >> /mnt/user-data/outputs/index-final.html << 'ENDOFFILE2'
+" alt="QR Code PIX" class="qrcode">
    <p style="margin-top:10px;font-size:14px">ou copie a chave: <br><b>${PIX}</b></p>
   </div>
   <button class="paid" onclick="confirmPayment(${idx})">Já paguei</button>
@@ -337,7 +312,6 @@ function updateTotal(){
  document.getElementById('totalTxt').innerHTML=`<b>${q}</b> ${q === 1 ? 'cota custará' : 'cotas custarão'} <b>${formatBRL(total)}</b>`;
 }
 
-/* confirma pagamento */
 async function confirmPayment(idx){
  const it=items[idx];
  const q=parseInt(document.getElementById('qty').value);
@@ -347,19 +321,17 @@ async function confirmPayment(idx){
  if(!nome){ alert('Por favor, preencha seu nome completo.'); return; }
  if(q>it.rest){ alert('Quantidade indisponível'); return; }
  
- // Mostra loading
  const modal = document.getElementById('modal');
  modal.innerHTML = '<div class="box"><div class="loading">Salvando...</div></div>';
  
- // decrementa e salva
  it.rest-=q;
  const totalPago = q * QUOTA;
  const saved1 = await saveItem(it);
  const saved2 = await savePurchase(it.id, it.n, q, nome, mensagem, totalPago);
  
  if(!saved1 || !saved2){
-  alert('Erro ao salvar. Por favor, verifique sua conexão e tente novamente.');
-  it.rest+=q; // reverte
+  alert('Erro ao salvar. Por favor, tente novamente.');
+  it.rest+=q;
   closeModal();
   return;
  }
@@ -371,10 +343,10 @@ async function confirmPayment(idx){
  modal.innerHTML=`
  <div class="box">
   <h2>💖 Muito obrigado, ${nome.split(' ')[0]}! 💖</h2>
-  <p>Seu carinho significa muito para nós. Obrigado por fazer parte da realização do nosso sonho!</p>
+  <p>Seu carinho significa muito para nós!</p>
   <p><b>Você presenteou:</b><br>${q} ${q === 1 ? 'cota' : 'cotas'} - ${it.n}<br><b>Total: ${formatBRL(totalPago)}</b></p>
   ${mensagem ? `<p style="background:#e3f2fd;padding:10px;border-radius:8px;font-style:italic">"${mensagem}"</p>` : ''}
-  <p>Por favor, envie o comprovante de pagamento pelo WhatsApp:</p>
+  <p>Por favor, envie o comprovante pelo WhatsApp:</p>
   <a class="wa" href="https://wa.me/${WA}?text=${waMessage}" target="_blank">Enviar comprovante no WhatsApp</a>
   <button class="back" onclick="closeModal()">Fechar</button>
  </div>`;
@@ -383,11 +355,30 @@ async function confirmPayment(idx){
 
 function closeModal(){ document.getElementById('modal').classList.remove('active'); }
 
-/* acesso admin */
 function accessAdmin(){
  const password = prompt('Digite a senha de administrador:');
  if(password === ADMIN_PASSWORD) showAdmin();
  else if(password !== null) alert('Senha incorreta!');
+}
+
+async function deletePurchase(key, itemId, qty) {
+  if(!confirm('Tem certeza que deseja deletar este presente?')) return;
+  
+  try {
+    await storage.delete(key);
+    
+    const item = items.find(it => it.id === itemId);
+    if(item) {
+      item.rest += qty;
+      await saveItem(item);
+    }
+    
+    alert('Presente deletado com sucesso!');
+    showAdmin();
+  } catch(error) {
+    console.error('Erro ao deletar:', error);
+    alert('Erro ao deletar. Tente novamente.');
+  }
 }
 
 async function showAdmin(){
@@ -403,7 +394,11 @@ async function showAdmin(){
   if(keysObj && keysObj.keys){
    for(let key of keysObj.keys){
     const result = await storage.get(key);
-    if(result && result.value) purchases.push(JSON.parse(result.value));
+    if(result && result.value) {
+      const data = JSON.parse(result.value);
+      data.key = key;
+      purchases.push(data);
+    }
    }
   }
   
@@ -418,7 +413,7 @@ async function showAdmin(){
    const valorArrecadado = cotasVendidas * QUOTA;
    if(itemPurchases.length > 0){
     html += `<div class="message-card"><h4>${item.n}</h4><p><b>Cotas vendidas:</b> ${cotasVendidas}/${item.total}</p><p><b>Valor arrecadado:</b> ${formatBRL(valorArrecadado)}</p><p><b>Presenteadores:</b></p><ul style="margin:5px 0;padding-left:20px">`;
-    itemPurchases.forEach(p => html += `<li>${p.nome} - ${p.qty} ${p.qty === 1 ? 'cota' : 'cotas'} (${p.date})</li>`);
+    itemPurchases.forEach(p => html += `<li>${p.nome} - ${p.qty} ${p.qty === 1 ? 'cota' : 'cotas'} (${p.date}) <button class="delete-btn" onclick="deletePurchase('${p.key}', '${p.itemId}', ${p.qty})">Deletar</button></li>`);
     html += `</ul></div>`;
    }
   });
@@ -426,12 +421,12 @@ async function showAdmin(){
   html += `<h2>💬 Mensagens dos Convidados</h2>`;
   const mensagens = purchases.filter(p => p.mensagem);
   if(mensagens.length > 0){
-   mensagens.forEach(m => html += `<div class="message-card"><h4>${m.nome}</h4><p style="font-style:italic">"${m.mensagem}"</p><p style="font-size:12px;color:#666">Presente: ${m.itemName} - ${m.date}</p></div>`);
+   mensagens.forEach(m => html += `<div class="message-card"><button class="delete-btn" onclick="deletePurchase('${m.key}', '${m.itemId}', ${m.qty})">Deletar</button><h4>${m.nome}</h4><p style="font-style:italic">"${m.mensagem}"</p><p style="font-size:12px;color:#666">Presente: ${m.itemName} - ${m.date}</p></div>`);
   } else {
    html += `<p class="sub">Nenhuma mensagem ainda</p>`;
   }
   
-  html += `<button class="back" style="margin-top:20px" onclick="resetData()">⚠️ Resetar Dados</button>`;
+  html += `<button class="back" style="margin-top:20px" onclick="resetData()">⚠️ Resetar TODOS os Dados</button>`;
   content.innerHTML = html;
  } catch(error) {
   content.innerHTML = `<p class="sub" style="color:red">Erro: ${error.message}</p>`;
@@ -443,21 +438,21 @@ function exitAdmin(){
  document.getElementById('adminPanel').classList.remove('active');
 }
 
-/* reset */
 async function resetData(){
- if(confirm('ATENÇÃO: Apagar TODOS os dados?')){
-  const keysObj = await storage.list('');
-  if(keysObj && keysObj.keys){
-   for(let key of keysObj.keys) await storage.delete(key);
+ if(confirm('ATENÇÃO: Apagar TODOS os dados? Esta ação não pode ser desfeita!')){
+  if(confirm('Tem ABSOLUTA certeza? Todos os presentes e mensagens serão deletados!')){
+    const keysObj = await storage.list('');
+    if(keysObj && keysObj.keys){
+     for(let key of keysObj.keys) await storage.delete(key);
+    }
+    items.forEach(it => it.rest = it.total);
+    alert('Dados resetados!');
+    exitAdmin();
+    render();
   }
-  items.forEach(it => it.rest = it.total);
-  alert('Dados resetados!');
-  exitAdmin();
-  render();
  }
 }
 
-/* inicia quando o DOM estiver pronto */
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
@@ -466,3 +461,5 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+ENDOFFILE2
+echo "Arquivo criado com sucesso!"
