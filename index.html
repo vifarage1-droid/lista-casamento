@@ -41,9 +41,14 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 .message-card h4{margin:0 0 5px 0;color:#1e88e5}
 .message-card p{margin:5px 0}
 .loading{text-align:center;padding:20px;color:#666}
+.status-indicator{position:fixed;top:10px;right:10px;padding:8px 15px;border-radius:20px;font-size:12px;font-weight:bold;z-index:1000}
+.status-online{background:#28a745;color:white}
+.status-offline{background:#dc3545;color:white}
 </style>
 </head>
 <body>
+
+<div id="statusIndicator" class="status-indicator status-offline">Conectando...</div>
 
 <div class="main-content" id="mainContent">
   <h1>💕 Nossa Lista de Casamento 💕</h1>
@@ -63,9 +68,9 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 
 <div class="modal" id="modal"></div>
 
-<!-- =============== FIREBASE (module) - deve ficar ANTES do script principal =============== -->
+<!-- =============== FIREBASE (module) =============== -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import {
     getFirestore,
     doc,
@@ -74,7 +79,7 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     deleteDoc,
     collection,
     getDocs
-  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAOAcUcej3uDDHdE0PNGHmDTWO2P8qBwTs",
@@ -85,34 +90,59 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     appId: "1:1000194052334:web:e8f2880596887df7ea63ff"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  let app, db;
+  
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log("✅ Firebase inicializado com sucesso!");
+    updateStatus(true);
+  } catch (error) {
+    console.error("❌ Erro ao inicializar Firebase:", error);
+    updateStatus(false);
+  }
 
-  // Implementação compatível com o antigo "storage" usado no site.
-  // Observação: aqui guardamos o valor como STRING no campo 'value' para manter compatibilidade.
+  function updateStatus(online) {
+    const indicator = document.getElementById('statusIndicator');
+    if (online) {
+      indicator.textContent = 'Online ✓';
+      indicator.className = 'status-indicator status-online';
+    } else {
+      indicator.textContent = 'Offline ✗';
+      indicator.className = 'status-indicator status-offline';
+    }
+  }
+
+  // Implementação do storage com tratamento de erros melhorado
   window.storage = {
     async get(key) {
       try {
         const reference = doc(db, "storage", key);
         const snap = await getDoc(reference);
-        if (!snap.exists()) return null;
+        if (!snap.exists()) {
+          console.log(`📭 Chave não encontrada: ${key}`);
+          return null;
+        }
         const data = snap.data();
-        // garante que devolvemos exatamente { value: string } como o código antigo espera
+        console.log(`✅ Dados recuperados: ${key}`);
         return { value: typeof data.value === "string" ? data.value : JSON.stringify(data.value) };
       } catch (e) {
-        console.error("storage.get error:", e);
+        console.error(`❌ Erro ao buscar ${key}:`, e);
+        updateStatus(false);
         return null;
       }
     },
 
     async set(key, value) {
       try {
-        // value aqui é uma string (JSON-stringified) vindo do seu código
-        // salvamos literalmente como campo 'value'
         await setDoc(doc(db, "storage", key), { value: value });
+        console.log(`✅ Dados salvos: ${key}`);
+        updateStatus(true);
         return true;
       } catch (e) {
-        console.error("storage.set error:", e);
+        console.error(`❌ Erro ao salvar ${key}:`, e);
+        updateStatus(false);
+        alert('Erro ao salvar dados. Verifique sua conexão com a internet.');
         return false;
       }
     },
@@ -124,9 +154,11 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
         snap.forEach(d => {
           if (d.id.startsWith(prefix)) keys.push(d.id);
         });
+        console.log(`✅ Listados ${keys.length} documentos com prefixo "${prefix}"`);
         return { keys };
       } catch (e) {
-        console.error("storage.list error:", e);
+        console.error(`❌ Erro ao listar documentos:`, e);
+        updateStatus(false);
         return { keys: [] };
       }
     },
@@ -134,21 +166,25 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     async delete(key) {
       try {
         await deleteDoc(doc(db, "storage", key));
+        console.log(`✅ Documento deletado: ${key}`);
         return true;
       } catch (e) {
-        console.error("storage.delete error:", e);
+        console.error(`❌ Erro ao deletar ${key}:`, e);
         return false;
       }
     }
   };
 
-  console.log("Firebase inicializado. storage disponível.");
+  console.log("🔥 Firebase storage API pronta!");
+  
+  // Dispara evento personalizado quando Firebase estiver pronto
+  window.dispatchEvent(new Event('firebaseReady'));
 </script>
 <!-- =============== FIM FIREBASE =============== -->
 
-<!-- ================= SCRIPT PRINCIPAL (usa window.storage definido acima) ================= -->
+<!-- ================= SCRIPT PRINCIPAL ================= -->
 <script>
-/* SCRIPT PRINCIPAL - lógica original adaptada para usar Firestore via window.storage */
+/* SCRIPT PRINCIPAL */
 const QUOTA = 300;
 const PIX = 'vifarage1@gmail.com';
 const WA = '5561982426059';
@@ -171,35 +207,56 @@ function formatBRL(valor) {
 
 items.forEach(it=>{it.total=Math.ceil(it.v/QUOTA);it.rest=it.total});
 
-/* Carrega os estados salvos no Firestore (coleção "storage") */
+/* Aguarda Firebase estar pronto */
+function initApp() {
+  if (typeof storage === 'undefined') {
+    console.log('⏳ Aguardando Firebase...');
+    window.addEventListener('firebaseReady', () => {
+      console.log('🚀 Iniciando aplicação...');
+      loadData();
+    });
+  } else {
+    loadData();
+  }
+}
+
+/* Carrega os estados salvos no Firestore */
 async function loadData(){
+ console.log('📥 Carregando dados do Firestore...');
  try {
   for(let item of items){
    const result = await storage.get('item_'+item.id);
    if(result && result.value){
     const data = JSON.parse(result.value);
-    if(data && typeof data.rest !== 'undefined') item.rest = data.rest;
+    if(data && typeof data.rest !== 'undefined') {
+      item.rest = data.rest;
+      console.log(`  ✓ ${item.n}: ${item.rest}/${item.total} cotas`);
+    }
    }
   }
+  console.log('✅ Dados carregados com sucesso!');
  } catch(error) {
-  console.error('Erro ao carregar dados:', error);
+  console.error('❌ Erro ao carregar dados:', error);
  }
  document.getElementById('loading').style.display = 'none';
  render();
 }
 
-/* salva item (atualiza rest) */
+/* salva item */
 async function saveItem(item){
  try {
-  await storage.set('item_'+item.id, JSON.stringify({rest: item.rest}));
-  return true;
+  const saved = await storage.set('item_'+item.id, JSON.stringify({rest: item.rest}));
+  if (saved) {
+    console.log(`💾 Item salvo: ${item.n} (${item.rest} cotas restantes)`);
+  }
+  return saved;
  } catch(error) {
   console.error('saveItem error:', error);
   return false;
  }
 }
 
-/* salva purchase (documento purchase_TIMESTAMP) */
+/* salva purchase */
 async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
  try {
   const timestamp = Date.now();
@@ -207,8 +264,11 @@ async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
    itemId, itemName, qty, nome, mensagem, total, timestamp,
    date: new Date().toLocaleString('pt-BR')
   };
-  await storage.set('purchase_'+timestamp, JSON.stringify(purchaseData));
-  return true;
+  const saved = await storage.set('purchase_'+timestamp, JSON.stringify(purchaseData));
+  if (saved) {
+    console.log(`🎁 Compra registrada: ${nome} - ${itemName}`);
+  }
+  return saved;
  } catch(error) {
   console.error('savePurchase error:', error);
   return false;
@@ -260,7 +320,6 @@ function openPay(idx){
   </div>
   <p style="margin-top:20px"><b>Faça o pagamento via PIX usando o QR Code abaixo:</b></p>
   <div class="pix">
-   <!-- Suba sua imagem QR como qrcode.jpeg no repositório ou substitua por data URL -->
    <img src="qrcode.jpeg" alt="QR Code PIX" class="qrcode">
    <p style="margin-top:10px;font-size:14px">ou copie a chave: <br><b>${PIX}</b></p>
   </div>
@@ -278,7 +337,7 @@ function updateTotal(){
  document.getElementById('totalTxt').innerHTML=`<b>${q}</b> ${q === 1 ? 'cota custará' : 'cotas custarão'} <b>${formatBRL(total)}</b>`;
 }
 
-/* confirma pagamento: atualiza rest, salva item e purchase no Firestore (via storage) */
+/* confirma pagamento */
 async function confirmPayment(idx){
  const it=items[idx];
  const q=parseInt(document.getElementById('qty').value);
@@ -288,6 +347,10 @@ async function confirmPayment(idx){
  if(!nome){ alert('Por favor, preencha seu nome completo.'); return; }
  if(q>it.rest){ alert('Quantidade indisponível'); return; }
  
+ // Mostra loading
+ const modal = document.getElementById('modal');
+ modal.innerHTML = '<div class="box"><div class="loading">Salvando...</div></div>';
+ 
  // decrementa e salva
  it.rest-=q;
  const totalPago = q * QUOTA;
@@ -295,17 +358,16 @@ async function confirmPayment(idx){
  const saved2 = await savePurchase(it.id, it.n, q, nome, mensagem, totalPago);
  
  if(!saved1 || !saved2){
-  alert('Erro ao salvar. Por favor, tente novamente.');
-  it.rest+=q;
+  alert('Erro ao salvar. Por favor, verifique sua conexão e tente novamente.');
+  it.rest+=q; // reverte
+  closeModal();
   return;
  }
  
- closeModal();
  render();
  
  const waMessage = `Olá! Acabei de presentear vocês com *${q} ${q === 1 ? 'cota' : 'cotas'}* do item *${it.n}* (${formatBRL(totalPago)}).%0A%0A*Nome:* ${nome}%0A${mensagem ? `*Mensagem:* ${mensagem}%0A` : ''}%0AVou enviar o comprovante de pagamento agora! 💕`;
  
- const modal=document.getElementById('modal');
  modal.innerHTML=`
  <div class="box">
   <h2>💖 Muito obrigado, ${nome.split(' ')[0]}! 💖</h2>
@@ -321,7 +383,7 @@ async function confirmPayment(idx){
 
 function closeModal(){ document.getElementById('modal').classList.remove('active'); }
 
-/* acesso admin - abre painel e lê purchases do Firestore via storage.list/get */
+/* acesso admin */
 function accessAdmin(){
  const password = prompt('Digite a senha de administrador:');
  if(password === ADMIN_PASSWORD) showAdmin();
@@ -381,7 +443,7 @@ function exitAdmin(){
  document.getElementById('adminPanel').classList.remove('active');
 }
 
-/* reset: apaga todos docs na coleção 'storage' (atenção: isso irá remover tudo no Firestore) */
+/* reset */
 async function resetData(){
  if(confirm('ATENÇÃO: Apagar TODOS os dados?')){
   const keysObj = await storage.list('');
@@ -395,8 +457,12 @@ async function resetData(){
  }
 }
 
-/* inicia */
-loadData();
+/* inicia quando o DOM estiver pronto */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 </script>
 </body>
 </html>
