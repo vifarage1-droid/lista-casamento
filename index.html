@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -64,7 +63,7 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 
 <div class="modal" id="modal"></div>
 
-<!-- FIREBASE: este script DEVE vir antes do script principal abaixo -->
+<!-- =============== FIREBASE (module) - deve ficar ANTES do script principal =============== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
   import {
@@ -77,7 +76,6 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
     getDocs
   } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-  // Cole aqui sua configuração (já inclusa conforme você me enviou)
   const firebaseConfig = {
     apiKey: "AIzaSyAOAcUcej3uDDHdE0PNGHmDTWO2P8qBwTs",
     authDomain: "lista-de-casamento-final.firebaseapp.com",
@@ -90,16 +88,17 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // Implementação do "storage" usado pelo script principal
-  // (substitui o antigo localStorage)
+  // Implementação compatível com o antigo "storage" usado no site.
+  // Observação: aqui guardamos o valor como STRING no campo 'value' para manter compatibilidade.
   window.storage = {
     async get(key) {
       try {
-        const ref = doc(db, "storage", key);
-        const snap = await getDoc(ref);
+        const reference = doc(db, "storage", key);
+        const snap = await getDoc(reference);
         if (!snap.exists()) return null;
-        // retornamos { value: JSONstring } para compatibilidade
-        return { value: JSON.stringify(snap.data()) };
+        const data = snap.data();
+        // garante que devolvemos exatamente { value: string } como o código antigo espera
+        return { value: typeof data.value === "string" ? data.value : JSON.stringify(data.value) };
       } catch (e) {
         console.error("storage.get error:", e);
         return null;
@@ -108,9 +107,9 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 
     async set(key, value) {
       try {
-        // value é string JSON do código existente => parseamos e salvamos
-        const obj = JSON.parse(value);
-        await setDoc(doc(db, "storage", key), obj);
+        // value aqui é uma string (JSON-stringified) vindo do seu código
+        // salvamos literalmente como campo 'value'
+        await setDoc(doc(db, "storage", key), { value: value });
         return true;
       } catch (e) {
         console.error("storage.set error:", e);
@@ -142,12 +141,14 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
       }
     }
   };
-</script>
-<!-- FIM FIREBASE -->
 
-<!-- SCRIPT PRINCIPAL -->
+  console.log("Firebase inicializado. storage disponível.");
+</script>
+<!-- =============== FIM FIREBASE =============== -->
+
+<!-- ================= SCRIPT PRINCIPAL (usa window.storage definido acima) ================= -->
 <script>
-/* SCRIPT PRINCIPAL - mantive a lógica original e removi o localStorage antigo */
+/* SCRIPT PRINCIPAL - lógica original adaptada para usar Firestore via window.storage */
 const QUOTA = 300;
 const PIX = 'vifarage1@gmail.com';
 const WA = '5561982426059';
@@ -170,6 +171,7 @@ function formatBRL(valor) {
 
 items.forEach(it=>{it.total=Math.ceil(it.v/QUOTA);it.rest=it.total});
 
+/* Carrega os estados salvos no Firestore (coleção "storage") */
 async function loadData(){
  try {
   for(let item of items){
@@ -186,6 +188,7 @@ async function loadData(){
  render();
 }
 
+/* salva item (atualiza rest) */
 async function saveItem(item){
  try {
   await storage.set('item_'+item.id, JSON.stringify({rest: item.rest}));
@@ -196,6 +199,7 @@ async function saveItem(item){
  }
 }
 
+/* salva purchase (documento purchase_TIMESTAMP) */
 async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
  try {
   const timestamp = Date.now();
@@ -211,6 +215,7 @@ async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
  }
 }
 
+/* render da grade */
 function render(){
  const grid=document.getElementById('grid');
  grid.innerHTML='';
@@ -231,6 +236,7 @@ function render(){
  });
 }
 
+/* abre modal de pagamento */
 function openPay(idx){
  const it=items[idx];
  if(it.rest === 0) return;
@@ -254,7 +260,8 @@ function openPay(idx){
   </div>
   <p style="margin-top:20px"><b>Faça o pagamento via PIX usando o QR Code abaixo:</b></p>
   <div class="pix">
-   <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAQDxAQEA8PDw8QDw8PDw8QDw8PDw8PFREWFhURFRUYHSggGBolHRUVITEhJSkrLi4uFx8zODMtNygtLisBCgoKDg0OFRAQFSsdHR0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAWgB4AMBIgACEQEDEQH/xAAbAAACAwEBAQAAAAAAAAAAAAAEBQIDBgEAB//EADkQAAIBAwMCBAQEBQMFAQAAAAECAwAEEQUSITFBBhMiUWEycYGRMkKhsRQjQlLB8BYzYnKC0v/EABoBAQADAQEBAAAAAAAAAAAAAAABAgMEBQb/xAAwEQACAgICAQMDBAIDAQAAAAAAAQIRAxIhMUFRBCIyYXGBkaGxwdHh8BQjQlL/2gAMAwEAAhEDEQA/AP2qAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" alt="QR Code PIX" class="qrcode">
+   <!-- Suba sua imagem QR como qrcode.jpeg no repositório ou substitua por data URL -->
+   <img src="qrcode.jpeg" alt="QR Code PIX" class="qrcode">
    <p style="margin-top:10px;font-size:14px">ou copie a chave: <br><b>${PIX}</b></p>
   </div>
   <button class="paid" onclick="confirmPayment(${idx})">Já paguei</button>
@@ -271,6 +278,7 @@ function updateTotal(){
  document.getElementById('totalTxt').innerHTML=`<b>${q}</b> ${q === 1 ? 'cota custará' : 'cotas custarão'} <b>${formatBRL(total)}</b>`;
 }
 
+/* confirma pagamento: atualiza rest, salva item e purchase no Firestore (via storage) */
 async function confirmPayment(idx){
  const it=items[idx];
  const q=parseInt(document.getElementById('qty').value);
@@ -280,6 +288,7 @@ async function confirmPayment(idx){
  if(!nome){ alert('Por favor, preencha seu nome completo.'); return; }
  if(q>it.rest){ alert('Quantidade indisponível'); return; }
  
+ // decrementa e salva
  it.rest-=q;
  const totalPago = q * QUOTA;
  const saved1 = await saveItem(it);
@@ -312,6 +321,7 @@ async function confirmPayment(idx){
 
 function closeModal(){ document.getElementById('modal').classList.remove('active'); }
 
+/* acesso admin - abre painel e lê purchases do Firestore via storage.list/get */
 function accessAdmin(){
  const password = prompt('Digite a senha de administrador:');
  if(password === ADMIN_PASSWORD) showAdmin();
@@ -371,6 +381,7 @@ function exitAdmin(){
  document.getElementById('adminPanel').classList.remove('active');
 }
 
+/* reset: apaga todos docs na coleção 'storage' (atenção: isso irá remover tudo no Firestore) */
 async function resetData(){
  if(confirm('ATENÇÃO: Apagar TODOS os dados?')){
   const keysObj = await storage.list('');
@@ -384,9 +395,8 @@ async function resetData(){
  }
 }
 
+/* inicia */
 loadData();
 </script>
 </body>
 </html>
-```
-
