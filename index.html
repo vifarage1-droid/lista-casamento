@@ -322,18 +322,8 @@ function openPay(idx){
    <p style="font-weight:bold;margin-bottom:10px;font-size:15px">📱 PIX Copia e Cola</p>
    <div class="pix-key">${PIX_COPIA_COLA}</div>
    <button class="copy-btn" id="copyPixBtn" onclick="copyToClipboard('${PIX_COPIA_COLA}', 'copyPixBtn')">📋 Copiar Código PIX</button>
-   <p class="recipient-info">Destinatário: ${RECIPIENT_NAME} - ${RECIPIENT_BANK}</p>
-   
-   <div class="pix-instructions">
-     <p style="font-weight:bold;margin:0 0 8px 0">Como pagar:</p>
-     <ol style="margin:5px 0">
-       <li>Clique em "Copiar Código PIX" acima</li>
-       <li>Abra o aplicativo do seu banco</li>
-       <li>Escolha <b>Pix</b> → <b>Colar código</b> ou <b>Pix Copia e Cola</b></li>
-       <li>Cole o código e confirme</li>
-       <li>Valor: <b id="valorPix">${formatBRL(QUOTA)}</b></li>
-     </ol>
-   </div>
+   <p style="font-size:16px;font-weight:bold;color:#333;margin-top:15px">${RECIPIENT_NAME} - ${RECIPIENT_BANK}</p>
+   <p style="font-size:18px;font-weight:bold;color:#1e88e5;margin-top:10px">Valor: <span id="valorPix">${formatBRL(QUOTA)}</span></p>
   </div>
   
   <button class="paid" onclick="confirmPayment(${idx})">✓ Já fiz o pagamento</button>
