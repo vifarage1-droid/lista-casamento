@@ -20,8 +20,12 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 .modal.active{display:flex}
 .box{background:#fff;border-radius:16px;padding:24px;max-width:420px;width:90%;text-align:center;max-height:90vh;overflow-y:auto}
 .pix{background:#e3f2fd;border:2px dashed #1e88e5;border-radius:10px;padding:15px;margin:12px 0}
-.qrcode{max-width:250px;width:100%;height:auto;margin:10px auto;display:block}
-.paid{background:#28a745;color:#fff;margin-top:10px}
+.pix-key{background:#fff;padding:12px;border-radius:8px;margin:10px 0;border:2px solid #1e88e5;word-break:break-all;font-family:monospace;font-size:12px;position:relative;max-height:80px;overflow-y:auto}
+.copy-btn{background:#1e88e5;color:#fff;padding:10px 20px;border-radius:8px;border:none;margin-top:10px;cursor:pointer;font-size:16px;font-weight:bold}
+.copy-btn:hover{background:#1976d2}
+.copy-btn.copied{background:#28a745}
+.recipient-info{font-size:12px;color:#666;margin-top:10px;font-style:italic}
+.paid{background:#28a745;color:#fff;margin-top:15px}
 .paid:hover{background:#218838}
 .back{margin-top:8px;background:#6c757d;color:#fff}
 .back:hover{background:#5a6268}
@@ -46,6 +50,9 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 .status-offline{background:#dc3545;color:white}
 .delete-btn{position:absolute;top:10px;right:10px;background:#dc3545;color:#fff;border:none;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer}
 .delete-btn:hover{background:#c82333}
+.pix-instructions{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin:10px 0;font-size:13px;text-align:left}
+.pix-instructions ol{margin:8px 0;padding-left:20px}
+.pix-instructions li{margin:5px 0}
 </style>
 </head>
 <body>
@@ -175,7 +182,9 @@ button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;c
 
 <script>
 const QUOTA = 300;
-const PIX = 'vifarage1@gmail.com';
+const PIX_COPIA_COLA = '00020126410014br.gov.bcb.pix0119vifarage1@gmail.com5204000053039865802BR5921Vinicius';
+const RECIPIENT_NAME = 'Vinicius Farage Ramos';
+const RECIPIENT_BANK = 'Mercado Pago';
 const WA = '5561982426059';
 const ADMIN_PASSWORD = 'noivos2026';
 
@@ -195,6 +204,21 @@ function formatBRL(valor) {
 }
 
 items.forEach(it=>{it.total=Math.ceil(it.v/QUOTA);it.rest=it.total});
+
+function copyToClipboard(text, buttonId) {
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(buttonId);
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Código Copiado!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.classList.remove('copied');
+    }, 2500);
+  }).catch(err => {
+    alert('Erro ao copiar. Por favor, copie manualmente o código acima.');
+  });
+}
 
 function initApp() {
   if (typeof storage === 'undefined') {
@@ -273,6 +297,7 @@ function openPay(idx){
  const it=items[idx];
  if(it.rest === 0) return;
  const modal=document.getElementById('modal');
+ 
  modal.innerHTML=`
  <div class="box">
   <h3>${it.n}</h3>
@@ -288,17 +313,30 @@ function openPay(idx){
   </div>
   <div class="form-field">
    <label>Mensagem para os Noivos:</label>
-   <textarea id="mensagem" rows="4" placeholder="Deixe uma mensagem carinhosa para os noivos..."></textarea>
+   <textarea id="mensagem" rows="4" placeholder="Deixe uma mensagem carinhosa..."></textarea>
   </div>
-  <p style="margin-top:20px"><b>Faça o pagamento via PIX usando o QR Code abaixo:</b></p>
+  
+  <p style="margin-top:25px;font-size:18px;font-weight:bold;color:#1e88e5">💳 Pagamento via PIX</p>
+  
   <div class="pix">
-   <img src="data:image/jpeg;base64,ENDOFFILE
-cat /home/claude/qrcode_oneline.txt >> /mnt/user-data/outputs/index-final.html
-cat >> /mnt/user-data/outputs/index-final.html << 'ENDOFFILE2'
-" alt="QR Code PIX" class="qrcode">
-   <p style="margin-top:10px;font-size:14px">ou copie a chave: <br><b>${PIX}</b></p>
+   <p style="font-weight:bold;margin-bottom:10px;font-size:15px">📱 PIX Copia e Cola</p>
+   <div class="pix-key">${PIX_COPIA_COLA}</div>
+   <button class="copy-btn" id="copyPixBtn" onclick="copyToClipboard('${PIX_COPIA_COLA}', 'copyPixBtn')">📋 Copiar Código PIX</button>
+   <p class="recipient-info">Destinatário: ${RECIPIENT_NAME} - ${RECIPIENT_BANK}</p>
+   
+   <div class="pix-instructions">
+     <p style="font-weight:bold;margin:0 0 8px 0">Como pagar:</p>
+     <ol style="margin:5px 0">
+       <li>Clique em "Copiar Código PIX" acima</li>
+       <li>Abra o aplicativo do seu banco</li>
+       <li>Escolha <b>Pix</b> → <b>Colar código</b> ou <b>Pix Copia e Cola</b></li>
+       <li>Cole o código e confirme</li>
+       <li>Valor: <b id="valorPix">${formatBRL(QUOTA)}</b></li>
+     </ol>
+   </div>
   </div>
-  <button class="paid" onclick="confirmPayment(${idx})">Já paguei</button>
+  
+  <button class="paid" onclick="confirmPayment(${idx})">✓ Já fiz o pagamento</button>
   <button class="back" onclick="closeModal()">Voltar</button>
  </div>`;
  modal.classList.add('active');
@@ -310,6 +348,10 @@ function updateTotal(){
  const q=parseInt(document.getElementById('qty').value);
  const total = q * QUOTA;
  document.getElementById('totalTxt').innerHTML=`<b>${q}</b> ${q === 1 ? 'cota custará' : 'cotas custarão'} <b>${formatBRL(total)}</b>`;
+ const valorPixEl = document.getElementById('valorPix');
+ if(valorPixEl) {
+   valorPixEl.textContent = formatBRL(total);
+ }
 }
 
 async function confirmPayment(idx){
@@ -346,8 +388,8 @@ async function confirmPayment(idx){
   <p>Seu carinho significa muito para nós!</p>
   <p><b>Você presenteou:</b><br>${q} ${q === 1 ? 'cota' : 'cotas'} - ${it.n}<br><b>Total: ${formatBRL(totalPago)}</b></p>
   ${mensagem ? `<p style="background:#e3f2fd;padding:10px;border-radius:8px;font-style:italic">"${mensagem}"</p>` : ''}
-  <p>Por favor, envie o comprovante pelo WhatsApp:</p>
-  <a class="wa" href="https://wa.me/${WA}?text=${waMessage}" target="_blank">Enviar comprovante no WhatsApp</a>
+  <p style="margin-top:15px">Por favor, envie o comprovante do pagamento pelo WhatsApp para confirmarmos:</p>
+  <a class="wa" href="https://wa.me/${WA}?text=${waMessage}" target="_blank">📲 Enviar comprovante no WhatsApp</a>
   <button class="back" onclick="closeModal()">Fechar</button>
  </div>`;
  modal.classList.add('active');
@@ -461,4 +503,3 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
-
