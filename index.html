@@ -5,50 +5,150 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lista de Casamento</title>
 <style>
-body{font-family:Arial,Helvetica,sans-serif;background:#fff0f6;margin:0;padding:20px}
-h1{text-align:center;color:#d63384}
-.sub{text-align:center;color:#777;margin-bottom:30px}
+body{font-family:Arial,Helvetica,sans-serif;background:#e0f2f7;margin:0;padding:20px}
+h1{text-align:center;color:#1e88e5}
+.sub{text-align:center;color:#555;margin-bottom:30px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
-.card{background:#fff;border-radius:16px;box-shadow:0 4px 10px rgba(0,0,0,.08);overflow:hidden}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 10px rgba(30,136,229,.15);overflow:hidden}
 .card img{width:100%;height:180px;object-fit:cover}
 .content{padding:16px}
-.price{color:#d63384;font-weight:bold;font-size:18px;margin:10px 0}
+.price{color:#1e88e5;font-weight:bold;font-size:18px;margin:10px 0}
 button{width:100%;padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer}
-.gift{background:#d63384;color:#fff}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
+.gift{background:#1e88e5;color:#fff}
+.gift:hover{background:#1976d2}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center;z-index:1000}
 .modal.active{display:flex}
-.box{background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;text-align:center}
-.pix{background:#fdf2f7;border:2px dashed #d63384;border-radius:10px;padding:10px;margin:12px 0;font-family:monospace}
+.box{background:#fff;border-radius:16px;padding:24px;max-width:420px;width:90%;text-align:center;max-height:90vh;overflow-y:auto}
+.pix{background:#e3f2fd;border:2px dashed #1e88e5;border-radius:10px;padding:15px;margin:12px 0}
+.qrcode{max-width:250px;width:100%;height:auto;margin:10px auto;display:block}
 .paid{background:#28a745;color:#fff;margin-top:10px}
+.paid:hover{background:#218838}
 .back{margin-top:8px;background:#6c757d;color:#fff}
+.back:hover{background:#5a6268}
 .wa{display:block;margin-top:12px;background:#25D366;color:#fff;padding:12px;border-radius:10px;text-decoration:none;font-weight:bold}
+.wa:hover{background:#1fb855}
+.form-field{margin:15px 0;text-align:left}
+.form-field label{display:block;margin-bottom:5px;font-weight:bold;color:#333}
+.form-field input,.form-field textarea{width:100%;padding:10px;border:2px solid #90caf9;border-radius:8px;font-size:16px;box-sizing:border-box}
+.form-field input:focus,.form-field textarea:focus{outline:none;border-color:#1e88e5}
+.qty-input{width:80px!important;font-size:18px!important;text-align:center;margin:8px 0}
+#totalTxt{font-size:20px;color:#1e88e5;font-weight:bold;margin:15px 0}
+.admin-btn{position:fixed;bottom:20px;right:20px;width:50px;height:50px;border-radius:50%;background:#1e88e5;color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,.2);z-index:999}
+.admin-panel{display:none;padding:20px}
+.admin-panel.active{display:block}
+.main-content.hidden{display:none}
+.message-card{background:#f5f5f5;padding:15px;margin:10px 0;border-radius:8px;text-align:left}
+.message-card h4{margin:0 0 5px 0;color:#1e88e5}
+.message-card p{margin:5px 0}
+.loading{text-align:center;padding:20px;color:#666}
 </style>
 </head>
 <body>
 
+<div class="main-content" id="mainContent">
 <h1>💕 Nossa Lista de Casamento 💕</h1>
 <p class="sub">Ajude a realizar nosso sonho!</p>
-
+<div class="loading" id="loading">Carregando...</div>
 <div class="grid" id="grid"></div>
+</div>
+
+<div class="admin-panel" id="adminPanel">
+<h1>🔐 Painel Administrativo</h1>
+<p class="sub">Área restrita aos noivos</p>
+<button class="back" onclick="exitAdmin()">Voltar para lista</button>
+<div id="adminContent"></div>
+</div>
+
+<button class="admin-btn" onclick="accessAdmin()">👤</button>
+
 <div class="modal" id="modal"></div>
 
 <script>
+// --- BANCO DE DADOS LOCAL (PARA TESTES) ---
+const storage = {
+ get: async (key) => {
+  const val = localStorage.getItem(key);
+  return val ? { value: val } : null;
+ },
+ set: async (key, value) => {
+  localStorage.setItem(key, value);
+  return true;
+ },
+ list: async (prefix) => {
+  const keys = [];
+  for(let i=0; i<localStorage.length; i++) {
+   const k = localStorage.key(i);
+   if(k.startsWith(prefix)) keys.push(k);
+  }
+  return { keys };
+ },
+ delete: async (key) => {
+  localStorage.removeItem(key);
+  return true;
+ }
+};
+// ------------------------------------------
+
 const QUOTA = 300;
 const PIX = 'vifarage1@gmail.com';
 const WA = '5561982426059';
+const ADMIN_PASSWORD = 'noivos2026'; // MUDE ESTA SENHA!
 
 const items = [
- {n:'Geladeira',v:3000,d:'Geladeira frost free duplex para nossa cozinha.',i:'https://images.unsplash.com/photo-1731323479152-4c4cec6a65f6?q=80&w=698&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
- {n:'Filtro de Água',v:1200,d:'Filtro de água moderno e eficiente.',i:'https://electrolux.vtexassets.com/arquivos/ids/275966-500-500?v=638853563246270000&width=500&height=500&aspect=true&format=auto'},
- {n:'Televisão',v:2400,d:'Televisão 4K para filmes e séries.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/tv/50qned70asa-bwz/dz-01.jpg/jcr:content/renditions/thum-1600x1062.jpeg?w=800'},
- {n:'Cama',v:4200,d:'Cama de casal confortável.',i:'https://images.unsplash.com/photo-1613977257441-dd57bd5aaf70?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
- {n:'Micro-ondas',v:600,d:'Micro-ondas prático para o dia a dia.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/produtos/ha/mwo/ms3043br/1-1600-ms3043br.jpg/jcr:content/renditions/thum-1600x1062.jpeg?w=800'},
- {n:'Máquina de Lavar',v:1800,d:'Máquina de lavar roupas automática.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/lavadoras-de-roupas/cv9014wc2_abwfbrs_essp_br_c/gallery/large01.jpg?w=800'},
- {n:'Lava-louças',v:2100,d:'Lava-louças para facilitar a rotina.',i:'https://brastemp.vtexassets.com/arquivos/ids/267500-1600-auto?v=638973414195430000&width=1600&height=auto&aspect=true'},
- {n:'Air Fryer',v:300,d:'Air fryer para refeições saudáveis.',i:'https://electrolux.vtexassets.com/arquivos/ids/268536-500-500?v=638778160471700000&width=500&height=500&aspect=true&format=auto'}
+ {id:'geladeira',n:'Geladeira',v:3000,d:'Geladeira frost free duplex para nossa cozinha.',i:'https://images.unsplash.com/photo-1731323479152-4c4cec6a65f6?q=80&w=698&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
+ {id:'filtro',n:'Filtro de Água',v:1200,d:'Filtro de água moderno e eficiente.',i:'https://electrolux.vtexassets.com/arquivos/ids/275966-500-500?v=638853563246270000&width=500&height=500&aspect=true&format=auto'},
+ {id:'tv',n:'Televisão',v:2400,d:'Televisão 4K para filmes e séries.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/tv/50qned70asa-bwz/dz-01.jpg/jcr:content/renditions/thum-1600x1062.jpeg?w=800'},
+ {id:'cama',n:'Cama',v:4200,d:'Cama de casal confortável.',i:'https://images.unsplash.com/photo-1613977257441-dd57bd5aaf70?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'},
+ {id:'microondas',n:'Micro-ondas',v:600,d:'Micro-ondas prático para o dia a dia.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/produtos/ha/mwo/ms3043br/1-1600-ms3043br.jpg/jcr:content/renditions/thum-1600x1062.jpeg?w=800'},
+ {id:'maquina',n:'Máquina de Lavar',v:1800,d:'Máquina de lavar roupas automática.',i:'https://www.lg.com/content/dam/channel/wcms/br/images/lavadoras-de-roupas/cv9014wc2_abwfbrs_essp_br_c/gallery/large01.jpg?w=800'},
+ {id:'lavalouças',n:'Lava-louças',v:2100,d:'Lava-louças para facilitar a rotina.',i:'https://brastemp.vtexassets.com/arquivos/ids/267500-1600-auto?v=638973414195430000&width=1600&height=auto&aspect=true'},
+ {id:'airfryer',n:'Air Fryer',v:300,d:'Air fryer para refeições saudáveis.',i:'https://electrolux.vtexassets.com/arquivos/ids/268536-500-500?v=638778160471700000&width=500&height=500&aspect=true&format=auto'}
 ];
 
+function formatBRL(valor) {
+ return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 items.forEach(it=>{it.total=Math.ceil(it.v/QUOTA);it.rest=it.total});
+
+async function loadData(){
+ try {
+  for(let item of items){
+   const result = await storage.get('item_'+item.id);
+   if(result && result.value){
+    const data = JSON.parse(result.value);
+    item.rest = data.rest;
+   }
+  }
+ } catch(error) {
+  console.error('Erro ao carregar dados:', error);
+ }
+ document.getElementById('loading').style.display = 'none';
+ render();
+}
+
+async function saveItem(item){
+ try {
+  await storage.set('item_'+item.id, JSON.stringify({rest: item.rest}));
+  return true;
+ } catch(error) {
+  return false;
+ }
+}
+
+async function savePurchase(itemId, itemName, qty, nome, mensagem, total){
+ try {
+  const timestamp = Date.now();
+  const purchaseData = {
+   itemId, itemName, qty, nome, mensagem, total, timestamp,
+   date: new Date().toLocaleString('pt-BR')
+  };
+  await storage.set('purchase_'+timestamp, JSON.stringify(purchaseData));
+  return true;
+ } catch(error) {
+  return false;
+ }
+}
 
 function render(){
  const grid=document.getElementById('grid');
@@ -60,9 +160,11 @@ function render(){
    <div class="content">
     <h3>${it.n}</h3>
     <p>${it.d}</p>
-    <div class="price">R$ ${it.v.toFixed(2)}</div>
-    <p><b>${it.rest}</b> de <b>${it.total}</b> cotas disponíveis<br>(R$ ${QUOTA},00 cada)</p>
-    <button class="gift" onclick="openPay(${idx})">Presentear 🎁</button>
+    <div class="price">${formatBRL(it.v)}</div>
+    <p><b>${it.rest}</b> de <b>${it.total}</b> cotas disponíveis<br>(${formatBRL(QUOTA)} cada)</p>
+    <button class="gift" onclick="openPay(${idx})" ${it.rest === 0 ? 'disabled style="background:#ccc"' : ''}>
+     ${it.rest === 0 ? 'Esgotado' : 'Presentear 🎁'}
+    </button>
    </div>
   </div>`;
  });
@@ -70,17 +172,31 @@ function render(){
 
 function openPay(idx){
  const it=items[idx];
+ if(it.rest === 0) return;
  const modal=document.getElementById('modal');
  modal.innerHTML=`
  <div class="box">
   <h3>${it.n}</h3>
   <p>Cotas disponíveis: <b>${it.rest}</b></p>
-  <label>Quantidade de cotas:</label><br>
-  <input type="number" id="qty" min="1" max="${it.rest}" value="1" style="width:80px;font-size:18px;text-align:center;margin:8px 0">
+  <div class="form-field">
+   <label>Quantidade de cotas:</label>
+   <input type="number" id="qty" class="qty-input" min="1" max="${it.rest}" value="1">
+  </div>
   <p id="totalTxt"></p>
-  <p><b>X cotas custarão Y reais</b>, por favor faça a transferência para o email <b>${PIX}</b></p>
-  <div class="pix">${PIX}</div>
-  <button class="paid" onclick="thanks(${idx})">Já paguei</button>
+  <div class="form-field">
+   <label>Nome Completo: *</label>
+   <input type="text" id="nomeCompleto" placeholder="Digite seu nome completo" required>
+  </div>
+  <div class="form-field">
+   <label>Mensagem para os Noivos:</label>
+   <textarea id="mensagem" rows="4" placeholder="Deixe uma mensagem carinhosa para os noivos..."></textarea>
+  </div>
+  <p style="margin-top:20px"><b>Faça o pagamento via PIX usando o QR Code abaixo:</b></p>
+  <div class="pix">
+   <img src="qrcode.jpeg" alt="QR Code PIX" class="qrcode">
+   <p style="margin-top:10px;font-size:14px">ou copie a chave: <br><b>${PIX}</b></p>
+  </div>
+  <button class="paid" onclick="confirmPayment(${idx})">Já paguei</button>
   <button class="back" onclick="closeModal()">Voltar</button>
  </div>`;
  modal.classList.add('active');
@@ -90,34 +206,124 @@ function openPay(idx){
 
 function updateTotal(){
  const q=parseInt(document.getElementById('qty').value);
- document.getElementById('totalTxt').innerText=`${q} cotas custarão R$ ${(q*QUOTA).toFixed(2)}`;
+ const total = q * QUOTA;
+ document.getElementById('totalTxt').innerHTML=`<b>${q}</b> ${q === 1 ? 'cota custará' : 'cotas custarão'} <b>${formatBRL(total)}</b>`;
 }
 
-function thanks(idx){
+async function confirmPayment(idx){
  const it=items[idx];
  const q=parseInt(document.getElementById('qty').value);
- if(q>it.rest){alert('Quantidade indisponível');return}
+ const nome = document.getElementById('nomeCompleto').value.trim();
+ const mensagem = document.getElementById('mensagem').value.trim();
+ 
+ if(!nome){ alert('Por favor, preencha seu nome completo.'); return; }
+ if(q>it.rest){ alert('Quantidade indisponível'); return; }
+ 
  it.rest-=q;
+ const totalPago = q * QUOTA;
+ const saved1 = await saveItem(it);
+ const saved2 = await savePurchase(it.id, it.n, q, nome, mensagem, totalPago);
+ 
+ if(!saved1 || !saved2){
+  alert('Erro ao salvar. Por favor, tente novamente.');
+  it.rest+=q;
+  return;
+ }
+ 
  closeModal();
  render();
+ 
+ const waMessage = `Olá! Acabei de presentear vocês com *${q} ${q === 1 ? 'cota' : 'cotas'}* do item *${it.n}* (${formatBRL(totalPago)}).%0A%0A*Nome:* ${nome}%0A${mensagem ? `*Mensagem:* ${mensagem}%0A` : ''}%0AVou enviar o comprovante de pagamento agora! 💕`;
+ 
  const modal=document.getElementById('modal');
  modal.innerHTML=`
  <div class="box">
-  <h2>💖 Muito obrigado! 💖</h2>
+  <h2>💖 Muito obrigado, ${nome.split(' ')[0]}! 💖</h2>
   <p>Seu carinho significa muito para nós. Obrigado por fazer parte da realização do nosso sonho!</p>
-  <p>Se possível, envie o comprovante pelo WhatsApp abaixo:</p>
-  <a class="wa" href="https://wa.me/${WA}" target="_blank">Enviar comprovante no WhatsApp</a>
+  <p><b>Você presenteou:</b><br>${q} ${q === 1 ? 'cota' : 'cotas'} - ${it.n}<br><b>Total: ${formatBRL(totalPago)}</b></p>
+  ${mensagem ? `<p style="background:#e3f2fd;padding:10px;border-radius:8px;font-style:italic">"${mensagem}"</p>` : ''}
+  <p>Por favor, envie o comprovante de pagamento pelo WhatsApp:</p>
+  <a class="wa" href="https://wa.me/${WA}?text=${waMessage}" target="_blank">Enviar comprovante no WhatsApp</a>
   <button class="back" onclick="closeModal()">Fechar</button>
  </div>`;
  modal.classList.add('active');
 }
 
-function closeModal(){
- document.getElementById('modal').classList.remove('active');
+function closeModal(){ document.getElementById('modal').classList.remove('active'); }
+
+function accessAdmin(){
+ const password = prompt('Digite a senha de administrador:');
+ if(password === ADMIN_PASSWORD) showAdmin();
+ else if(password !== null) alert('Senha incorreta!');
 }
 
-render();
-</script>
+async function showAdmin(){
+ document.getElementById('mainContent').classList.add('hidden');
+ document.getElementById('adminPanel').classList.add('active');
+ const content = document.getElementById('adminContent');
+ content.innerHTML = '<div class="loading">Carregando dados...</div>';
+ 
+ try {
+  const purchases = [];
+  const keysObj = await storage.list('purchase_');
+  
+  if(keysObj && keysObj.keys){
+   for(let key of keysObj.keys){
+    const result = await storage.get(key);
+    if(result && result.value) purchases.push(JSON.parse(result.value));
+   }
+  }
+  
+  purchases.sort((a, b) => b.timestamp - a.timestamp);
+  let totalArrecadado = purchases.reduce((acc, p) => acc + p.total, 0);
+  
+  let html = `<h2>📊 Resumo</h2><div class="message-card"><h4>Total Arrecadado</h4><p style="font-size:24px;color:#1e88e5;font-weight:bold">${formatBRL(totalArrecadado)}</p><p>Total de presentes: ${purchases.length}</p></div><h2>🎁 Histórico de Presentes</h2>`;
+  
+  items.forEach(item => {
+   const itemPurchases = purchases.filter(p => p.itemId === item.id);
+   const cotasVendidas = item.total - item.rest;
+   const valorArrecadado = cotasVendidas * QUOTA;
+   if(itemPurchases.length > 0){
+    html += `<div class="message-card"><h4>${item.n}</h4><p><b>Cotas vendidas:</b> ${cotasVendidas}/${item.total}</p><p><b>Valor arrecadado:</b> ${formatBRL(valorArrecadado)}</p><p><b>Presenteadores:</b></p><ul style="margin:5px 0;padding-left:20px">`;
+    itemPurchases.forEach(p => html += `<li>${p.nome} - ${p.qty} ${p.qty === 1 ? 'cota' : 'cotas'} (${p.date})</li>`);
+    html += `</ul></div>`;
+   }
+  });
+  
+  html += `<h2>💬 Mensagens dos Convidados</h2>`;
+  const mensagens = purchases.filter(p => p.mensagem);
+  if(mensagens.length > 0){
+   mensagens.forEach(m => html += `<div class="message-card"><h4>${m.nome}</h4><p style="font-style:italic">"${m.mensagem}"</p><p style="font-size:12px;color:#666">Presente: ${m.itemName} - ${m.date}</p></div>`);
+  } else {
+   html += `<p class="sub">Nenhuma mensagem ainda</p>`;
+  }
+  
+  html += `<button class="back" style="margin-top:20px" onclick="resetData()">⚠️ Resetar Dados</button>`;
+  content.innerHTML = html;
+ } catch(error) {
+  content.innerHTML = `<p class="sub" style="color:red">Erro: ${error.message}</p>`;
+ }
+}
 
+function exitAdmin(){
+ document.getElementById('mainContent').classList.remove('hidden');
+ document.getElementById('adminPanel').classList.remove('active');
+}
+
+async function resetData(){
+ if(confirm('ATENÇÃO: Apagar TODOS os dados?')){
+  const keysObj = await storage.list('');
+  if(keysObj && keysObj.keys){
+   for(let key of keysObj.keys) await storage.delete(key);
+  }
+  items.forEach(it => it.rest = it.total);
+  alert('Dados resetados!');
+  exitAdmin();
+  render();
+ }
+}
+
+loadData();
+</script>
 </body>
 </html>
